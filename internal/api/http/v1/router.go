@@ -12,6 +12,7 @@ import (
 func StartRouter(
 	reviews *handlers.HTTPReviewHandler,
 	movies *handlers.HTTPMoviesHandler,
+	user *handlers.HTTPUserHandler,
 ) error {
 
 	g := gin.Default()
@@ -30,6 +31,11 @@ func StartRouter(
 	// {
 	// 	m.GET()
 	// }
+
+	u := g.Group("/api/v1/user")
+	{
+		u.POST("/create", user.CreateUser)
+	}
 
 	return g.Run(":8080")
 }

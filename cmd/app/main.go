@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"log"
+	"net/http"
 	"os"
 	_ "vkvideo-reviews/docs"
 	v1 "vkvideo-reviews/internal/api/http/v1"
@@ -41,19 +42,28 @@ func main() {
 
 	// repository
 	reviewRepo := repository.NewReviewsRepository(db)
+	userRepo := repository.NewUserRepository(db)
 	movieRepo := repository.NewMoviesRepository(db)
 
 	// Service
 	reviews := usecase.NewReviewUseCase(reviewRepo)
+	user := usecase.NewUserUseCase(userRepo)
 	movies := usecase.NewGetMovieUseCase(movieRepo)
 
 	// Handler
 	reviewHandler := handlers.NewReviewHandler(reviews)
+	userHandler := handlers.NewUserHandler(user)
 	moviesHandler := handlers.NewMoviesHandler(movies)
 
 	v1.StartRouter(
 		reviewHandler,
 		moviesHandler,
+		userHandler,
 	)
+
+	log.Println("Server starting on :8080")
+	if err := http.ListenAndServe(":8080", nil); err != nil {
+		log.Fatalf("Failed to start server: %v", err)
+	}
 
 }
