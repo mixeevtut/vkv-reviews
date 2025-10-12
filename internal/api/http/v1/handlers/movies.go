@@ -1,4 +1,4 @@
-package v1
+package handlers
 
 import (
 	"net/http"
@@ -6,11 +6,15 @@ import (
 	"vkvideo-reviews/internal/usecase"
 )
 
-type MoviesHandler struct {
-	uc usecase.Movies
+type HTTPMoviesHandler struct {
+	uc *usecase.Movies
 }
 
-func (m MoviesHandler) GetMovies(w http.ResponseWriter, r *http.Request) {
+func NewMoviesHandler(uc *usecase.Movies) *HTTPMoviesHandler {
+	return &HTTPMoviesHandler{uc: uc}
+}
+
+func (m HTTPMoviesHandler) GetMovies(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return

@@ -41,15 +41,19 @@ func main() {
 
 	// repository
 	reviewRepo := repository.NewReviewsRepository(db)
+	movieRepo := repository.NewMoviesRepository(db)
 
 	// Service
 	reviews := usecase.NewReviewUseCase(reviewRepo)
+	movies := usecase.NewGetMovieUseCase(movieRepo)
 
 	// Handler
 	reviewHandler := handlers.NewReviewHandler(reviews)
+	moviesHandler := handlers.NewMoviesHandler(movies)
 
 	v1.StartRouter(
 		reviewHandler,
+		moviesHandler,
 	)
 
 }
