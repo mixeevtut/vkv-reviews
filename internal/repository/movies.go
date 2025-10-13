@@ -9,6 +9,7 @@ import (
 
 type MoviesRepository interface {
 	GetByID(ctx context.Context, ID int) (*entity.Movie, error)
+	GetAll(ctx context.Context) ([]*entity.Movie, error)
 }
 
 type Movies struct {
@@ -43,4 +44,32 @@ func (r *Movies) GetByID(ctx context.Context, ID int) (*entity.Movie, error) {
 	}
 
 	return &movie, nil
+}
+
+func (r *Movies) GetAll(ctx context.Context) ([]*entity.Movie, error) {
+	query := `SELECT id, title, description, avgscore, releasedate FROM movies`
+
+	rows, err := r.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var movies []*entity.Movie
+	for rows.Next() {
+		var movie entity.Movie
+		err := rows.Scan(
+			&movie.ID,
+			&movie.Title,
+			&movie.Description,
+			&movie.AverageScore,
+			&movie.ReleaseDate,
+		)
+		if err != nil {
+			return nil, err
+		}
+		movies = append(movies, &movie)
+	}
+
+	return movies, nil
 }

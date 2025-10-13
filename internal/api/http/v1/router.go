@@ -27,10 +27,11 @@ func StartRouter(
 		r.DELETE("/:id", reviews.Delete)
 	}
 
-	// m := g.Group("/api/v1/movies")
-	// {
-	// 	m.GET()
-	// }
+	m := g.Group("/api/v1/movies")
+	{
+		m.GET("/movies", movies.GetMovies)
+		m.GET("/movies/video-:id", movies.GetMovie)
+	}
 
 	u := g.Group("/api/v1/user")
 	{
