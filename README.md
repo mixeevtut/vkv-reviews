@@ -19,13 +19,13 @@
 3. **Запуск миграции:**
 
    ```bash
-   make migrate DATABASE_URL=postgres://username:password@localhost:5432/vkvideo_reviews_db?sslmode=disable
+   make migrate DATABASE_URL=postgres://postgres:postgres@localhost:5432/vkvideo_reviews_db MIGRATIONS_DIR=./migrations
    ```
 
 4. **Запуск приложения:**
 
    ```bash
-   go run main.go
+   go run cmd/app/main.go
    ```
 
    Приложение поднимается в `http://localhost:8080`.

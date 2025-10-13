@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"database/sql"
-	_ "github.com/lib/pq"
 	"log"
 	"net/http"
 	"os"
@@ -12,6 +11,8 @@ import (
 	"vkvideo-reviews/internal/api/http/v1/handlers"
 	"vkvideo-reviews/internal/repository"
 	"vkvideo-reviews/internal/usecase"
+
+	_ "github.com/lib/pq"
 )
 
 // @title           VKVideo-Reviews API
