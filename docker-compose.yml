@@ -3,7 +3,7 @@ services:
     image: postgres:17.4-alpine3.21
     container_name: vkvideo_reviews_serv_postgres
     environment:
-      POSTGRES_DB: products_db
+      POSTGRES_DB: vkvideo_reviews_db
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
@@ -18,3 +18,5 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
+volumes:
+  postgres_data:
