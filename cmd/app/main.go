@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	_ "github.com/lib/pq"
 	"log"
 	"net/http"
 	"os"
@@ -25,7 +26,7 @@ func main() {
 	// Получаем URL базы данных из переменной окружения
 	databaseURL := os.Getenv("DATABASE_URL")
 	if databaseURL == "" {
-		databaseURL = "postgres://user:password@localhost:5432/tasks_db?sslmode=disable"
+		databaseURL = "postgres://postgres:postgres@localhost:5432/vkvideo_reviews_db?sslmode=disable"
 	}
 
 	// Подключаемся к базе данных

@@ -1,3 +1,4 @@
+-- +goose Up
 CREATE TABLE reviews
 (
     id         SERIAL PRIMARY KEY,
@@ -23,4 +24,7 @@ CREATE TABLE reviews
 );
 
 CREATE INDEX idx_reviews_user_id ON reviews (user_id);
-CREATE INDEX idx_reviews_movie_id ON users (movie_id);
+CREATE INDEX idx_reviews_movie_id ON reviews (movie_id);
+
+-- +goose Down
+DROP TABLE reviews
