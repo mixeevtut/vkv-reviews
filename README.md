@@ -28,7 +28,15 @@
    go run cmd/app/main.go
    ```
 
+5. **запуск api-gen**
+   
+   ``` bash
+   go tool oapi-codegen -config internal/api/config.yml  internal/api/openapi.yml
+   ```
+
    Приложение поднимается в `http://localhost:8080`.
+
+   SwaggerUI `http://localhost:8080/swagger/index.html#/default`.
 
 ## Makefile команды
 

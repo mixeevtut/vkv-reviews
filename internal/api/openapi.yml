@@ -1,0 +1,318 @@
+# yaml-language-server: https://spec.openapis.org/oas/3.0/schema/2024-10-18.html
+openapi: 3.0.4
+info:
+  title: Movie Reviews API
+  version: 2.0.0
+  description: >
+    Контракты сервиса рецензий vkvideo-reviews
+servers:
+  - url: /api/v2
+tags:
+  - name: Reviews
+  - name: Movies
+  - name: Users
+
+paths:
+  /reviews:
+    post:
+      tags: [Reviews]
+      operationId: createReview
+      summary: Создать отзыв
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewCreate'
+            examples:
+              sample:
+                value:
+                  user_id: 1
+                  movie_id: 10
+                  score: 9
+                  content: "Отличный фильм!"
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewCreateResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /reviews/{id}:
+    get:
+      tags: [Reviews]
+      operationId: getReviewById
+      summary: Получить отзыв по ID
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Review'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      tags: [Reviews]
+      operationId: updateReview
+      summary: Обновить отзыв
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewUpdate'
+            examples:
+              sample:
+                value:
+                  score: 8
+                  content: "Трам-пам-пам"
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Review'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags: [Reviews]
+      operationId: deleteReview
+      summary: Удалить отзыв
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /movies:
+    get:
+      tags: [Movies]
+      operationId: getMovies
+      summary: Получить список фильмов
+      parameters:
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+          description: Ограничение на кол-во записей
+        - in: query
+          name: offset
+          schema: { type: integer, minimum: 0, default: 0 }
+          description: Смещение для пагинации
+      responses:
+        '200':
+          description: OK
+          headers:
+            X-Total-Count:
+              description: Всего записей (для пагинации)
+              schema: { type: integer, minimum: 0 }
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Movie'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /movies/video-{id}:
+    get:
+      tags: [Movies]
+      operationId: getMovie
+      summary: Получить фильм по ID
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Movie'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /user/create:
+    post:
+      tags: [Users]
+      operationId: createUser
+      summary: Создать пользователя
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreate'
+            examples:
+              sample:
+                value:
+                  name: "Alice"
+                  email: "alice@example.com"
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  parameters:
+    IdPath:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+      description: Идентификатор ресурса
+
+  schemas:
+    # ---- Movies ----
+    Movie:
+      type: object
+      required: [id, title, description, average_score, release_date]
+      properties:
+        id:            { type: integer }
+        title:         { type: string, minLength: 1, maxLength: 200 }
+        description:   { type: string, minLength: 1, maxLength: 5000 }
+        average_score: { type: number, format: double, minimum: 0, maximum: 10 }
+        release_date:  { type: string, format: date-time }
+
+    # ---- Reviews ----
+    Review:
+      type: object
+      required: [id, user_id, movie_id, score, content, created_at, updated_at]
+      properties:
+        id:         { type: integer }
+        user_id:    { type: integer }
+        movie_id:   { type: integer }
+        score:      { type: integer, minimum: 0, maximum: 10 }
+        content:    { type: string, minLength: 1, maxLength: 10000 }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    ReviewCreateResponse:
+      type: object
+      required: [ id]
+      properties:
+        id: { type: integer }
+
+    ReviewCreate:
+      type: object
+      required: [user_id, movie_id, score, content]
+      properties:
+        user_id:  { type: integer }
+        movie_id: { type: integer }
+        score:    { type: integer, minimum: 0, maximum: 10 }
+        content:  { type: string, minLength: 1, maxLength: 10000 }
+
+    ReviewUpdate:
+      type: object
+      description: Поля опциональны PATCH
+      properties:
+        score:
+          type: integer
+          minimum: 0
+          maximum: 10
+          nullable: true
+        content:
+          type: string
+          minLength: 1
+          maxLength: 10000
+          nullable: true
+
+    # ---- Users ----
+    User:
+      type: object
+      required: [id, name, email]
+      properties:
+        id:    { type: integer }
+        name:  { type: string, minLength: 1, maxLength: 200 }
+        email: { type: string, format: email, maxLength: 254 }
+
+    UserCreate:
+      type: object
+      required: [name, email]
+      properties:
+        name:  { type: string, minLength: 1, maxLength: 200 }
+        email: { type: string, format: email, maxLength: 254 }
+
+    # ---- Errors ----
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:    { type: string }
+        message: { type: string }
+        details:
+          description: Дополнительные сведения
+          nullable: true
+          oneOf:
+            - type: string
+            - type: object
+            - type: array
+
+  responses:
+    BadRequest:
+      description: Некорректный запрос
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          examples:
+            bad_request:
+              value: { code: "bad_request", message: "invalid body" }
+    UnprocessableEntity:
+      description: Валидация не пройдена
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          examples:
+            validation:
+              value: { code: "validation_error", message: "score must be 0..10" }
+    NotFound:
+      description: Ресурс не найден
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          examples:
+            not_found:
+              value: { code: "not_found", message: "review not found" }
+    InternalError:
+      description: Внутренняя ошибка сервера
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          examples:
+            internal:
+              value: { code: "internal_error", message: "unexpected error" }

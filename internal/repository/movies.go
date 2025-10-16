@@ -26,7 +26,7 @@ func (r *Movies) GetByID(ctx context.Context, ID int) (*entity.Movie, error) {
 	}
 
 	var movie entity.Movie
-	query := `SELECT id, title, description, avgscore, releasedate FROM movies WHERE id = $1`
+	query := `SELECT id, title, description, average_score, release_date FROM movies WHERE id = $1`
 
 	err := r.db.QueryRowContext(ctx, query, ID).Scan(
 		&movie.ID,
@@ -47,7 +47,7 @@ func (r *Movies) GetByID(ctx context.Context, ID int) (*entity.Movie, error) {
 }
 
 func (r *Movies) GetAll(ctx context.Context) ([]*entity.Movie, error) {
-	query := `SELECT id, title, description, avgscore, releasedate FROM movies`
+	query := `SELECT id, title, description, average_score, release_date FROM movies`
 
 	rows, err := r.db.QueryContext(ctx, query)
 	if err != nil {

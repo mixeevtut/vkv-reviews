@@ -7,18 +7,13 @@ import (
 	"net/http"
 	"os"
 	_ "vkvideo-reviews/docs"
-	v1 "vkvideo-reviews/internal/api/http/v1"
-	"vkvideo-reviews/internal/api/http/v1/handlers"
+	"vkvideo-reviews/internal/api/http/v2"
+	handlersV2 "vkvideo-reviews/internal/api/http/v2/handlers"
 	"vkvideo-reviews/internal/repository"
 	"vkvideo-reviews/internal/usecase"
 
 	_ "github.com/lib/pq"
 )
-
-// @title           VKVideo-Reviews API
-// @description     API для  рецензий
-// @BasePath        /api/v1
-// @schemes         http
 
 func main() {
 
@@ -53,15 +48,26 @@ func main() {
 	movies := usecase.NewGetMovieUseCase(movieRepo)
 
 	// Handler
-	reviewHandler := handlers.NewReviewHandler(reviews)
-	userHandler := handlers.NewUserHandler(user)
-	moviesHandler := handlers.NewMoviesHandler(movies)
+	//reviewHandler := handlersV1.NewReviewHandler(reviews)
+	//userHandler := handlersV1.NewUserHandler(user)
+	//moviesHandler := handlersV1.NewMoviesHandler(movies)
 
-	v1.StartRouter(
-		reviewHandler,
-		moviesHandler,
-		userHandler,
-	)
+	// Handler v2
+	reviewHandlerV2 := handlersV2.NewReviewHandler(reviews)
+	moviesHandlerV2 := handlersV2.NewMoviesHandler(movies)
+	userHandlerV2 := handlersV2.NewUserHandler(user)
+
+	v2.NewRouter(
+		reviewHandlerV2,
+		moviesHandlerV2,
+		userHandlerV2,
+	).StartRouter()
+
+	//v1.StartRouter(
+	//	reviewHandler,
+	//	moviesHandler,
+	//	userHandler,
+	//)
 
 	log.Println("Server starting on :8080")
 	if err := http.ListenAndServe(":8080", nil); err != nil {
