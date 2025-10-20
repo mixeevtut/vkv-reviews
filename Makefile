@@ -25,3 +25,12 @@ migrate:
 		exit 1; \
 	fi
 	goose -dir $(MIGRATIONS_DIR) postgres "$(DATABASE_URL)" up
+
+OPENAPI=internal/api/openapi.yml
+CFG=internal/api/config.yml
+
+.PHONY: api-gen
+api-gen:
+	go tool oapi-codegen -config $(CFG) $(OPENAPI)
+
+generate: api-gen
