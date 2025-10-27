@@ -6,11 +6,11 @@ import (
 	"log"
 	"net/http"
 	"os"
-	_ "vkvideo-reviews/docs"
 	"vkvideo-reviews/internal/api/http/v2"
 	handlersV2 "vkvideo-reviews/internal/api/http/v2/handlers"
 	"vkvideo-reviews/internal/repository"
 	"vkvideo-reviews/internal/usecase"
+	"vkvideo-reviews/pkg/postgres"
 
 	_ "github.com/lib/pq"
 )
@@ -30,12 +30,19 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
-	defer db.Close()
+	defer func() {
+		if errBDClose := db.Close(); errBDClose != nil {
+			log.Fatalf("Failed to close database connection: %v", errBDClose)
+		}
+	}()
 
 	// Проверяем соединение
 	if err := db.PingContext(ctx); err != nil {
 		log.Fatalf("Failed to ping database: %v", err)
 	}
+
+	//Transactor
+	transactor := postgres.NewTransactor(db)
 
 	// repository
 	reviewRepo := repository.NewReviewsRepository(db)
@@ -43,7 +50,7 @@ func main() {
 	movieRepo := repository.NewMoviesRepository(db)
 
 	// Service
-	reviews := usecase.NewReviewUseCase(reviewRepo)
+	reviews := usecase.NewReviewUseCase(reviewRepo, transactor)
 	user := usecase.NewUserUseCase(userRepo)
 	movies := usecase.NewGetMovieUseCase(movieRepo)
 

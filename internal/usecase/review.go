@@ -2,7 +2,9 @@ package usecase
 
 import (
 	"context"
+	"github.com/pkg/errors"
 	"vkvideo-reviews/internal/entity"
+	"vkvideo-reviews/pkg/transaction"
 )
 
 type ReviewRepository interface {
@@ -14,11 +16,13 @@ type ReviewRepository interface {
 
 type ReviewUseCase struct {
 	reviewRepo ReviewRepository
+	transactor transaction.Transactor
 }
 
-func NewReviewUseCase(repo ReviewRepository) *ReviewUseCase {
+func NewReviewUseCase(repo ReviewRepository, transactor transaction.Transactor) *ReviewUseCase {
 	return &ReviewUseCase{
 		reviewRepo: repo,
+		transactor: transactor,
 	}
 }
 
@@ -32,29 +36,53 @@ func (r *ReviewUseCase) GetReview(ctx context.Context, ID int) (*entity.Review, 
 }
 
 func (r *ReviewUseCase) CreateReview(ctx context.Context, rw entity.Review) (int, error) {
-	reviewID, err := r.reviewRepo.Create(ctx, rw)
+	var result int
+	err := r.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
+		reviewID, err := r.reviewRepo.Create(ctx, rw)
+		if err != nil {
+			return err
+		}
+		result = reviewID
+
+		return nil
+	})
+
 	if err != nil {
-		return -1, err
+		return -1, errors.Wrap(err, "review creation failed")
 	}
 
-	return reviewID, nil
+	return result, nil
 }
 
 func (r *ReviewUseCase) UpdateReview(ctx context.Context, rw entity.Review) (*entity.Review, error) {
+	var result *entity.Review
+	err := r.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
+		review, err := r.reviewRepo.Update(ctx, rw)
+		if err != nil {
+			return err
+		}
+		result = review
 
-	review, err := r.reviewRepo.Update(ctx, rw)
+		return nil
+	})
+
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error executing update review")
 	}
 
-	return review, nil
+	return result, nil
 }
 
 func (r *ReviewUseCase) DeleteReview(ctx context.Context, ID int) error {
-	err := r.reviewRepo.DeleteByID(ctx, ID)
+	err := r.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
+		err := r.reviewRepo.DeleteByID(ctx, ID)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error executing delete review")
 	}
-
 	return nil
 }
