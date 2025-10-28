@@ -13,6 +13,7 @@ import (
 	"vkvideo-reviews/internal/api/http/v2"
 	handlersV2 "vkvideo-reviews/internal/api/http/v2/handlers"
 	"vkvideo-reviews/internal/cron"
+	"vkvideo-reviews/internal/fetcher"
 	"vkvideo-reviews/internal/repository"
 	"vkvideo-reviews/internal/usecase"
 	"vkvideo-reviews/pkg/postgres"
@@ -66,13 +67,15 @@ func main() {
 	user := usecase.NewUserUseCase(userRepo)
 	movies := usecase.NewMoviesUseCase(movieRepo)
 
+	vkVideoClient := fetcher.NewVKVideoClient("https://vkvideo.ru/movies")
+
 	// Импорт фильмов
 	vkVideoParser := &repository.VKVideoParser{}
-	movieImportUseCase := usecase.NewMovieImportUseCase(vkVideoParser, movieRepo)
+	movieImportUseCase := usecase.NewMovieImportUseCase(vkVideoClient, vkVideoParser, movieRepo)
 
-	// Запускаем cron-задачу
-	fetcher := handlersV2.NewVKVideoFetcher("https://vkvideo.ru/movies")
-	cronJob := cron.NewMovieImportCron(movieImportUseCase, fetcher, 24*time.Hour)
+	// Запускаем cron-задачу (передаем maxPages)
+	maxPagesPerRun := 10
+	cronJob := cron.NewMovieImportCron(movieImportUseCase, 24*time.Hour, maxPagesPerRun)
 
 	go cronJob.Start(ctx)
 	// Handler

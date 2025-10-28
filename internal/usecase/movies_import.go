@@ -5,29 +5,36 @@ import (
 	"fmt"
 	"log"
 
+	"vkvideo-reviews/internal/fetcher"
 	"vkvideo-reviews/internal/repository"
 )
 
 type MovieImportUseCase interface {
-	ImportMoviesFromJSON(ctx context.Context, jsonData []byte) (*ImportResult, error)
+	ImportMovies(ctx context.Context, maxPages int) (*ImportResult, error)
 }
 
 type MovieImport struct {
+	client    *fetcher.VKVideoClient
 	parser    *repository.VKVideoParser
 	movieRepo repository.MoviesRepository
 }
 
-func NewMovieImportUseCase(parser *repository.VKVideoParser, movieRepo repository.MoviesRepository) *MovieImport {
+func NewMovieImportUseCase(client *fetcher.VKVideoClient, parser *repository.VKVideoParser, movieRepo repository.MoviesRepository) *MovieImport {
 	return &MovieImport{
+		client:    client,
 		parser:    parser,
 		movieRepo: movieRepo,
 	}
 }
 
-func (uc *MovieImport) ImportMoviesFromJSON(ctx context.Context, jsonData []byte) (*ImportResult, error) {
-	movies, err := uc.parser.ParseMoviesJSON(jsonData)
+func (uc *MovieImport) ImportMovies(ctx context.Context, maxPages int) (*ImportResult, error) {
+	playlists, err := uc.client.FetchAllMoviesWithPagination(ctx, maxPages)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse movies from JSON: %w", err)
+		return nil, fmt.Errorf("failed to fetch movies from VK: %w", err)
+	}
+	movies, err := uc.parser.ParseMoviesFromPlaylists(playlists)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse movies from playlists: %w", err)
 	}
 
 	if len(movies) == 0 {

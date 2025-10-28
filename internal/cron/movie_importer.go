@@ -5,25 +5,24 @@ import (
 	"log"
 	"time"
 
-	"vkvideo-reviews/internal/api/http/v2/handlers"
 	"vkvideo-reviews/internal/usecase"
 )
 
 type MovieImportCron struct {
 	importer usecase.MovieImportUseCase
-	fetcher  handlers.MovieDataFetcher
 	interval time.Duration
+	maxPages int
 }
 
 func NewMovieImportCron(
 	importer usecase.MovieImportUseCase,
-	fetcher handlers.MovieDataFetcher,
 	interval time.Duration,
+	maxPages int,
 ) *MovieImportCron {
 	return &MovieImportCron{
 		importer: importer,
-		fetcher:  fetcher,
 		interval: interval,
+		maxPages: maxPages,
 	}
 }
 
@@ -50,17 +49,11 @@ func (c *MovieImportCron) Start(ctx context.Context) {
 func (c *MovieImportCron) runOnce(ctx context.Context) {
 	log.Println("Fetching and importing movies...")
 
-	data, err := c.fetcher.FetchMoviesData(ctx)
-	if err != nil {
-		log.Printf("Failed to fetch movie data: %v", err)
-		return
-	}
-
-	result, err := c.importer.ImportMoviesFromJSON(ctx, data)
+	result, err := c.importer.ImportMovies(ctx, c.maxPages)
 	if err != nil {
 		log.Printf("Failed to import movies: %v", err)
 		return
 	}
 
-	log.Printf("Imported %d movies (total: %d)", result.Imported, result.Total)
+	log.Printf("Imported %d movies (total processed: %d)", result.Imported, result.Total)
 }
