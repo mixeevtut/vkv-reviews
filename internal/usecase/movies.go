@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"fmt"
+
 	"vkvideo-reviews/internal/entity"
 	"vkvideo-reviews/internal/repository"
 )
@@ -16,7 +17,7 @@ type Movies struct {
 	movieRepo repository.MoviesRepository
 }
 
-func NewGetMovieUseCase(movieRepo repository.MoviesRepository) *Movies {
+func NewMoviesUseCase(movieRepo repository.MoviesRepository) *Movies {
 	return &Movies{
 		movieRepo: movieRepo,
 	}

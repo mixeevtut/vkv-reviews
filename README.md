@@ -16,19 +16,13 @@
    make docker-up
    ```
 
-3. **Запуск миграции:**
-
-   ```bash
-   make migrate DATABASE_URL=postgres://postgres:postgres@localhost:5432/vkvideo_reviews_db MIGRATIONS_DIR=./migrations
-   ```
-
-4. **Запуск приложения:**
+3. **Запуск приложения:**
 
    ```bash
    go run cmd/app/main.go
    ```
 
-5. **запуск api-gen**
+4. **Запуск api-gen**
    
    ``` bash
    go tool oapi-codegen -config internal/api/config.yml  internal/api/openapi.yml
