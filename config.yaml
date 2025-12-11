@@ -1,0 +1,23 @@
+redis:
+  host: "127.0.0.1"
+  port: 6379
+  user: "default"
+  pass: "redis"
+  db: 0
+  stream: "recalc"
+  group: "rating-recalc"
+  consumer: "consumer-1"
+  max_len: 1000000
+
+postgres:
+  host: "127.0.0.1"
+  port: 5432
+  db: "vkvideo_reviews_db"
+  user: "postgres"
+  pass: "postgres"
+  sslmode: "disable"
+  max_conns: 20
+  min_conns: 2
+  max_conn_lifetime: "30m"
+  max_conn_idle_time: "5m"
+  health_timeout: "3s"

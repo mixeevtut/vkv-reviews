@@ -4,24 +4,20 @@ import (
 	"context"
 	"github.com/pkg/errors"
 	"vkvideo-reviews/internal/entity"
+	"vkvideo-reviews/internal/repository"
 	"vkvideo-reviews/pkg/transaction"
 )
 
-type ReviewRepository interface {
-	GetByID(ctx context.Context, ID int) (*entity.Review, error)
-	Create(ctx context.Context, r entity.Review) (int, error)
-	Update(ctx context.Context, r entity.Review) (*entity.Review, error)
-	DeleteByID(ctx context.Context, ID int) error
-}
-
 type ReviewUseCase struct {
-	reviewRepo ReviewRepository
+	reviewRepo repository.ReviewRepository
+	event      repository.RecalcEventRepository
 	transactor transaction.Transactor
 }
 
-func NewReviewUseCase(repo ReviewRepository, transactor transaction.Transactor) *ReviewUseCase {
+func NewReviewUseCase(repo repository.ReviewRepository, eventRepo repository.RecalcEventRepository, transactor transaction.Transactor) *ReviewUseCase {
 	return &ReviewUseCase{
 		reviewRepo: repo,
+		event:      eventRepo,
 		transactor: transactor,
 	}
 }
@@ -43,6 +39,10 @@ func (r *ReviewUseCase) CreateReview(ctx context.Context, rw entity.Review) (int
 			return err
 		}
 		result = reviewID
+		err = r.event.Add(ctx, rw.MovieID)
+		if err != nil {
+			return err
+		}
 
 		return nil
 	})
@@ -62,6 +62,10 @@ func (r *ReviewUseCase) UpdateReview(ctx context.Context, rw entity.Review) (*en
 			return err
 		}
 		result = review
+		err = r.event.Add(ctx, review.MovieID)
+		if err != nil {
+			return err
+		}
 
 		return nil
 	})
@@ -75,10 +79,20 @@ func (r *ReviewUseCase) UpdateReview(ctx context.Context, rw entity.Review) (*en
 
 func (r *ReviewUseCase) DeleteReview(ctx context.Context, ID int) error {
 	err := r.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
-		err := r.reviewRepo.DeleteByID(ctx, ID)
+		review, err := r.reviewRepo.GetByID(ctx, ID)
 		if err != nil {
 			return err
 		}
+		movieId := review.MovieID
+		err = r.reviewRepo.DeleteByID(ctx, ID)
+		if err != nil {
+			return err
+		}
+		err = r.event.Add(ctx, movieId)
+		if err != nil {
+			return err
+		}
+
 		return nil
 	})
 	if err != nil {

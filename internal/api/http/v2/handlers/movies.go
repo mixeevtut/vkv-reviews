@@ -2,9 +2,9 @@ package handlers
 
 import (
 	"net/http"
+	"vkvideo-reviews/internal/api/http/v2/dto"
 
 	apigen "vkvideo-reviews/internal/api/gen"
-	"vkvideo-reviews/internal/api/http/v1/dto"
 	"vkvideo-reviews/internal/usecase"
 
 	"github.com/gin-gonic/gin"
@@ -31,7 +31,7 @@ func (h HTTPMoviesHandler) GetMovie(c *gin.Context, id apigen.IdPath) {
 		return
 	}
 
-	movieDTO := dto.FromMovie(*movie)
+	movieDTO := dto.ToMovieResponse(*movie)
 	c.JSON(http.StatusOK, movieDTO)
 }
 
@@ -42,11 +42,10 @@ func (h HTTPMoviesHandler) GetMovies(c *gin.Context, params apigen.GetMoviesPara
 		return
 	}
 
-	var moviesDTO []*dto.ModelMovie
+	var moviesResponse []apigen.Movie
 	for _, movie := range movies {
-		moviesDTO = append(moviesDTO, dto.FromMovie(*movie))
+		moviesResponse = append(moviesResponse, dto.ToMovieResponse(*movie))
 	}
 
-	response := dto.MoviesResponse{Movies: moviesDTO}
-	c.JSON(http.StatusOK, response)
+	c.JSON(http.StatusOK, moviesResponse)
 }

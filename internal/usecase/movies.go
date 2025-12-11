@@ -14,21 +14,28 @@ type MoviesUseCase interface {
 }
 
 type Movies struct {
-	movieRepo repository.MoviesRepository
+	movieRepo   repository.MoviesRepository
+	reviewsRepo repository.ReviewRepository
 }
 
-func NewMoviesUseCase(movieRepo repository.MoviesRepository) *Movies {
+func NewMoviesUseCase(movieRepo repository.MoviesRepository, reviewRepo repository.ReviewRepository) *Movies {
 	return &Movies{
-		movieRepo: movieRepo,
+		movieRepo:   movieRepo,
+		reviewsRepo: reviewRepo,
 	}
 }
 
 func (m *Movies) GetMovie(ctx context.Context, ID int) (*entity.Movie, error) {
 	movie, err := m.movieRepo.GetByID(ctx, ID)
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to get movie: %w", err)
 	}
+	reviews, err := m.reviewsRepo.GetReviewsByMovie(ctx, ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get movie reviews: %w", err)
+	}
+	movie.SetReviews(reviews)
+
 	return movie, nil
 }
 

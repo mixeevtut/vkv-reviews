@@ -1,6 +1,4 @@
-.PHONY: swag docker-up docker-down docker-logs
-swag:
-	swag init -g cmd/app/main.go --parseDependency --parseInternal -o ./docs
+.PHONY: docker-up docker-down docker-logs
 
 docker-up:
 	@echo "Starting PostgreSQL database..."
@@ -8,6 +6,8 @@ docker-up:
 	@echo "Waiting for database to be ready..."
 	@until docker-compose exec -T postgres pg_isready -U postgres -d vkvideo_reviews_db; do sleep 2; done
 	@echo "Database is ready!"
+	@echo "Starting Redis"
+	docker-compose up -d redis
 
 docker-down:
 	@echo "Stopping PostgreSQL database..."
@@ -34,3 +34,10 @@ api-gen:
 	go tool oapi-codegen -config $(CFG) $(OPENAPI)
 
 generate: api-gen
+
+.PHONY: run
+
+run:
+	@echo "Start app"
+	make docker-up
+	go run cmd/app/main.go

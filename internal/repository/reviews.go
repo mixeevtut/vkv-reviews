@@ -10,6 +10,14 @@ import (
 	"vkvideo-reviews/pkg/postgres"
 )
 
+type ReviewRepository interface {
+	GetByID(ctx context.Context, ID int) (*entity.Review, error)
+	Create(ctx context.Context, r entity.Review) (int, error)
+	Update(ctx context.Context, r entity.Review) (*entity.Review, error)
+	DeleteByID(ctx context.Context, ID int) error
+	GetReviewsByMovie(ctx context.Context, movieID int) ([]entity.Review, error)
+}
+
 type ReviewRepoPG struct {
 	db *sql.DB
 }
@@ -90,7 +98,7 @@ func (p *ReviewRepoPG) Create(ctx context.Context, r entity.Review) (int, error)
 	scan := exec.QueryRowContext(ctx, q, r.UserID, r.MovieID, r.Score, r.Content)
 	err := scan.Scan(&rw.ID)
 	if err != nil {
-		return -1, err
+		return 0, err
 	}
 
 	return rw.ID, nil
@@ -128,4 +136,34 @@ func (p *ReviewRepoPG) DeleteByID(ctx context.Context, ID int) error {
 	}
 
 	return nil
+}
+
+func (p *ReviewRepoPG) GetReviewsByMovie(ctx context.Context, movieID int) ([]entity.Review, error) {
+	const q = `SELECT id, created_at, updated_at, user_id, movie_id, score, content FROM reviews WHERE movie_id=$1 AND is_deleted = FALSE`
+	var reviews []entity.Review
+
+	exec := p.getExecutor(ctx)
+	rows, err := exec.QueryContext(ctx, q, movieID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, entity.ErrReviewNotFound
+		}
+	}
+	for rows.Next() {
+		var rw row
+		err := rows.Scan(
+			&rw.ID,
+			&rw.CreatedAt,
+			&rw.UpdatedAt,
+			&rw.UserID,
+			&rw.MovieID,
+			&rw.Score,
+			&rw.Content,
+		)
+		if err != nil {
+			return nil, err
+		}
+		reviews = append(reviews, *rw.toEntity())
+	}
+	return reviews, nil
 }

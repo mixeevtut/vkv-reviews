@@ -3,44 +3,37 @@ package handlers
 import (
 	"github.com/gin-gonic/gin"
 	"net/http"
-	"vkvideo-reviews/internal/api/http/v1/dto"
+	apigen "vkvideo-reviews/internal/api/gen"
+	"vkvideo-reviews/internal/api/http/v2/dto"
 	"vkvideo-reviews/internal/usecase"
 )
 
 type HTTPUserHandler struct {
-	UseCase *usecase.UserUseCase
+	uc *usecase.UserUseCase
 }
 
 func NewUserHandler(uc *usecase.UserUseCase) *HTTPUserHandler {
-	return &HTTPUserHandler{UseCase: uc}
+	return &HTTPUserHandler{uc: uc}
 }
 
 func (h *HTTPUserHandler) CreateUser(c *gin.Context) {
+	var model apigen.UserCreate
 
-	var model dto.ModelUser
 	if err := c.ShouldBindJSON(&model); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.AbortWithStatusJSON(
+			http.StatusBadRequest,
+			apigen.Error{Code: "bad_request", Message: "invalid request body"})
 		return
 	}
 
-	if err := model.Validate(); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
+	user := dto.ToUserEntity(model)
+	id, err := h.uc.CreateUser(c.Request.Context(), user)
+	if err != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			apigen.Error{Code: "internal_server_error", Message: "Failed to create user"})
 	}
 
-	user := model.ToUser()
-	if err := h.UseCase.CreateUser(c.Request.Context(), user); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   "internal_error",
-			"message": "Failed to create user",
-		})
-	}
-
-	c.JSON(http.StatusCreated, gin.H{"message": "User created successfully",
-		"user": gin.H{
-			"id":    model.ID,
-			"name":  model.Name,
-			"email": model.Email,
-		},
-	})
+	response := dto.ToUserCreateResponse(id)
+	c.JSON(http.StatusCreated, response)
 }

@@ -14,6 +14,7 @@ type MoviesRepository interface {
 	GetByID(ctx context.Context, ID int) (*entity.Movie, error)
 	GetAll(ctx context.Context) ([]*entity.Movie, error)
 	Exists(ctx context.Context, ID int) (bool, error)
+	UpdateAvgRating(ctx context.Context, movieId int, avgRating float64) error
 }
 type Movies struct {
 	db *sql.DB
@@ -164,4 +165,14 @@ func (r *Movies) Exists(ctx context.Context, ID int) (bool, error) {
 	}
 
 	return exists, nil
+}
+
+func (r *Movies) UpdateAvgRating(ctx context.Context, movieId int, avgRating float64) error {
+	const q = `UPDATE movies SET average_score = $1 WHERE id = $2`
+	if movieId <= 0 {
+		return errors.New("invalid movie ID")
+	}
+
+	_, err := r.db.ExecContext(ctx, q, avgRating, movieId)
+	return err
 }

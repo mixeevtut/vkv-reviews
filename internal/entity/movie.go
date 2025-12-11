@@ -8,4 +8,9 @@ type Movie struct {
 	Description  string
 	AverageScore float64
 	ReleaseDate  time.Time
+	Reviews      []Review
+}
+
+func (m *Movie) SetReviews(rs []Review) {
+	m.Reviews = rs
 }
