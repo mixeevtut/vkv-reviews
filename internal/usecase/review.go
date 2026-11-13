@@ -25,7 +25,7 @@ func NewReviewUseCase(repo repository.ReviewRepository, eventRepo repository.Rec
 func (r *ReviewUseCase) GetReview(ctx context.Context, ID int) (*entity.Review, error) {
 	review, err := r.reviewRepo.GetByID(ctx, ID)
 	if err != nil {
-		return nil, errGetReview
+		return nil, err
 	}
 
 	return review, nil
@@ -54,7 +54,7 @@ func (r *ReviewUseCase) CreateReview(ctx context.Context, rw entity.Review) (int
 	return result, nil
 }
 
-func (r *ReviewUseCase) UpdateReview(ctx context.Context, rw entity.Review) (*entity.Review, error) {
+func (r *ReviewUseCase) UpdateReview(ctx context.Context, rw entity.ReviewUpdate) (*entity.Review, error) {
 	var result *entity.Review
 	err := r.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		review, err := r.reviewRepo.Update(ctx, rw)

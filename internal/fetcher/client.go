@@ -1,14 +1,16 @@
 package fetcher
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
+	"time"
+	"unicode/utf8"
 
 	"golang.org/x/text/encoding/charmap"
 )
@@ -21,25 +23,20 @@ type VKVideoClient struct {
 func NewVKVideoClient(baseURL string) *VKVideoClient {
 	return &VKVideoClient{
 		BaseURL: strings.TrimSpace(baseURL),
-		client:  &http.Client{},
+		client:  &http.Client{Timeout: 15 * time.Second},
 	}
 }
 
 func (c *VKVideoClient) fetchNextPage(ctx context.Context, nextFrom string, showcaseSessionID int) ([]byte, error) {
-	var bodyBuffer bytes.Buffer
-	bodyBuffer.WriteString("al=1&silent_loading=1")
+	form := url.Values{"al": {"1"}, "silent_loading": {"1"}}
 	if nextFrom != "" {
-		bodyBuffer.WriteString("&next_from=")
-		bodyBuffer.WriteString(nextFrom)
+		form.Set("next_from", nextFrom)
 	}
 	if showcaseSessionID != 0 {
-		bodyBuffer.WriteString("&__showcase_session_id=")
-		bodyBuffer.WriteString(strconv.Itoa(showcaseSessionID))
+		form.Set("__showcase_session_id", strconv.Itoa(showcaseSessionID))
 	}
 
-	body := bytes.NewReader(bodyBuffer.Bytes())
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.BaseURL, body)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.BaseURL, strings.NewReader(form.Encode()))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -66,6 +63,10 @@ func (c *VKVideoClient) fetchNextPage(ctx context.Context, nextFrom string, show
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	if utf8.Valid(data) && !strings.Contains(strings.ToLower(resp.Header.Get("Content-Type")), "windows-1251") {
+		return data, nil
 	}
 
 	utf8Data, err := charmap.Windows1251.NewDecoder().Bytes(data)
@@ -134,31 +135,21 @@ func (c *VKVideoClient) parseNextFromAndSessionID(innerPayloadData map[string]in
 	return nextFrom, showcaseSessionID, nil
 }
 
-func (c *VKVideoClient) extractPlaylists(innerPayloadData map[string]interface{}) ([][]interface{}, error) {
-	playlistsRaw, ok := innerPayloadData["playlists"]
-	if !ok {
-		return nil, fmt.Errorf("playlists not found in inner payload data")
-	}
-
-	playlists, ok := playlistsRaw.([]interface{})
-	if !ok {
-		return nil, fmt.Errorf("playlists in inner payload data is not an array, got %T", playlistsRaw)
-	}
-
+func (c *VKVideoClient) extractMovieItems(innerPayloadData map[string]interface{}) [][]interface{} {
 	var result [][]interface{}
-	for _, item := range playlists {
-		playlist, ok := item.([]interface{})
-		if !ok {
-			continue
+	for _, key := range []string{"videos", "playlists"} {
+		items, _ := innerPayloadData[key].([]interface{})
+		for _, item := range items {
+			if row, ok := item.([]interface{}); ok {
+				result = append(result, row)
+			}
 		}
-		result = append(result, playlist)
 	}
-
-	return result, nil
+	return result
 }
 
 func (c *VKVideoClient) FetchAllMoviesWithPagination(ctx context.Context, maxPages int) ([][]interface{}, error) {
-	var allPlaylists [][]interface{}
+	var allItems [][]interface{}
 
 	nextFrom := ""
 	showcaseSessionID := 0
@@ -183,12 +174,7 @@ func (c *VKVideoClient) FetchAllMoviesWithPagination(ctx context.Context, maxPag
 			return nil, fmt.Errorf("failed to extract inner payload data on page %d: %w", pageCount+1, err)
 		}
 
-		playlists, err := c.extractPlaylists(innerPayloadData)
-		if err != nil {
-			return nil, fmt.Errorf("failed to extract playlists on page %d: %w", pageCount+1, err)
-		}
-
-		allPlaylists = append(allPlaylists, playlists...)
+		allItems = append(allItems, c.extractMovieItems(innerPayloadData)...)
 
 		newNextFrom, newShowcaseSessionID, err := c.parseNextFromAndSessionID(innerPayloadData)
 		if err != nil {
@@ -196,8 +182,7 @@ func (c *VKVideoClient) FetchAllMoviesWithPagination(ctx context.Context, maxPag
 			break
 		}
 
-		if newNextFrom == "" {
-			fmt.Println("No more pages (nextFrom is empty), stopping.")
+		if newNextFrom == "" || newNextFrom == nextFrom {
 			break
 		}
 
@@ -209,9 +194,9 @@ func (c *VKVideoClient) FetchAllMoviesWithPagination(ctx context.Context, maxPag
 		pageCount++
 	}
 
-	if len(allPlaylists) == 0 {
-		return nil, fmt.Errorf("no playlists were fetched during pagination")
+	if len(allItems) == 0 {
+		return nil, fmt.Errorf("no movie records were fetched during pagination")
 	}
 
-	return allPlaylists, nil
+	return allItems, nil
 }

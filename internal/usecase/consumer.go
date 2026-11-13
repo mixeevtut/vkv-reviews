@@ -20,17 +20,14 @@ func NewConsumer(rc *pkgredis.Client, uc RatingRecalcUseCase) *Consumer {
 	}
 }
 
-func (c *Consumer) Run(ctx context.Context) error {
-	if err := c.redis.EnsureGroup(ctx); err != nil {
-		return err
-	}
+func (c *Consumer) Run(ctx context.Context) {
 	log.Printf("[consumer] ready: stream=%s group=%s consumer=%s", c.redis.Stream, c.redis.Group, c.redis.Consumer)
 
 	for {
 		select {
 		case <-ctx.Done():
 			log.Println("[consumer] stopping: context canceled")
-			return ctx.Err()
+			return
 		default:
 		}
 

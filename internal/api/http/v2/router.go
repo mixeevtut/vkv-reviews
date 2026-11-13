@@ -21,13 +21,13 @@ func NewRouter(r *handlers.HTTPReviewHandler, m *handlers.HTTPMoviesHandler, u *
 	return &Router{r, m, u}
 }
 
-func (router *Router) StartRouter() error {
+func (router *Router) Handler() (http.Handler, error) {
 
 	g := gin.Default()
 
 	swagger, err := apigen.GetSwagger()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	g.GET("/swagger.json", func(c *gin.Context) {
 		b, err := json.Marshal(swagger)
@@ -49,5 +49,5 @@ func (router *Router) StartRouter() error {
 
 	apigen.RegisterHandlers(v2, router)
 
-	return g.Run(":8080")
+	return g, nil
 }

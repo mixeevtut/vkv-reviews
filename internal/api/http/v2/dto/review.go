@@ -14,11 +14,11 @@ func CreateReviewToEntity(a apigen.ReviewCreate) entity.Review {
 	}
 }
 
-func UpdateReviewToEntity(id int, a apigen.ReviewUpdate) entity.Review {
-	return entity.Review{
+func UpdateReviewToEntity(id int, a apigen.ReviewUpdate) entity.ReviewUpdate {
+	return entity.ReviewUpdate{
 		ID:      id,
-		Score:   *a.Score,
-		Content: *a.Content,
+		Score:   a.Score,
+		Content: a.Content,
 	}
 }
 

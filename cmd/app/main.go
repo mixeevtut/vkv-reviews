@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"log"
 	"net/http"
 	"os"
@@ -31,8 +32,8 @@ func main() {
 		log.Fatalf("load config: %v", err)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 
 	// Получаем URL базы данных из переменной окружения
 	databaseURL := os.Getenv("DATABASE_URL")
@@ -70,6 +71,9 @@ func main() {
 		log.Fatalf("redis init: %v", err)
 	}
 	defer func() { _ = rds.Close() }()
+	if err := rds.EnsureGroup(ctx); err != nil {
+		log.Fatalf("initialize Redis stream group: %v", err)
+	}
 
 	// Repository
 	reviewRepo := repository.NewReviewsRepository(db)
@@ -86,24 +90,7 @@ func main() {
 	producer := usecase.NewProducer(eventRepo, rds)
 	consumer := usecase.NewConsumer(rds, *ratingRecalc)
 
-	wg := new(sync.WaitGroup)
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		if err := consumer.Run(ctx); err != nil {
-			log.Fatalf("Failed to run consumer: %v", err)
-		}
-	}()
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		if err := producer.Run(ctx, 2*time.Second, 100); err != nil {
-			log.Fatalf("Failed to run producer: %v", err)
-		}
-	}()
-
-	vkVideoClient := fetcher.NewVKVideoClient("https://vkvideo.ru/movies")
+	vkVideoClient := fetcher.NewVKVideoClient("https://vkvideo.ru/movies_serials/films")
 
 	// Импорт фильмов
 	vkVideoParser := &repository.VKVideoParser{}
@@ -113,42 +100,43 @@ func main() {
 	maxPagesPerRun := 10
 	cronJob := cron.NewMovieImportCron(movieImportUseCase, 24*time.Hour, maxPagesPerRun)
 
-	go cronJob.Start(ctx)
-
 	// Handler v2
 	reviewHandlerV2 := handlersV2.NewReviewHandler(reviews)
 	moviesHandlerV2 := handlersV2.NewMoviesHandler(movies)
 	userHandlerV2 := handlersV2.NewUserHandler(user)
 
-	if err := v2.NewRouter(reviewHandlerV2, moviesHandlerV2, userHandlerV2).StartRouter(); err != nil {
-		log.Fatalf("Failed to start v2 router: %v", err)
+	handler, err := v2.NewRouter(reviewHandlerV2, moviesHandlerV2, userHandlerV2).Handler()
+	if err != nil {
+		log.Fatalf("Failed to build v2 router: %v", err)
 	}
 
-	// Запускаем HTTP-сервер в горутине
+	var wg sync.WaitGroup
+	wg.Go(func() { consumer.Run(ctx) })
+	wg.Go(func() { producer.Run(ctx, 2*time.Second, 100) })
+	wg.Go(func() { cronJob.Start(ctx) })
+
 	server := &http.Server{
 		Addr:    ":8080",
-		Handler: nil,
+		Handler: handler,
 	}
 
 	go func() {
 		log.Println("Server starting on :8080")
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Fatalf("Failed to start server: %v", err)
 		}
 	}()
 
-	// Ждём сигнала завершения
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
+	<-ctx.Done()
+	stop()
 
 	log.Println("Shutting down server...")
-	cancel() // останавливаем cron
-
-	// Останавливаем HTTP-сервер
-	if err := server.Shutdown(context.Background()); err != nil {
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := server.Shutdown(shutdownCtx); err != nil {
 		log.Printf("Server shutdown error: %v", err)
 	}
+	wg.Wait()
 
 	log.Println("Server exited")
 }

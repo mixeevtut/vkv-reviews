@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"github.com/bytedance/gopkg/util/logger"
 	"time"
 	"vkvideo-reviews/internal/entity"
 	"vkvideo-reviews/pkg/postgres"
@@ -13,7 +12,7 @@ import (
 type ReviewRepository interface {
 	GetByID(ctx context.Context, ID int) (*entity.Review, error)
 	Create(ctx context.Context, r entity.Review) (int, error)
-	Update(ctx context.Context, r entity.Review) (*entity.Review, error)
+	Update(ctx context.Context, r entity.ReviewUpdate) (*entity.Review, error)
 	DeleteByID(ctx context.Context, ID int) error
 	GetReviewsByMovie(ctx context.Context, movieID int) ([]entity.Review, error)
 }
@@ -57,11 +56,14 @@ type Executor interface {
 }
 
 func (p *ReviewRepoPG) getExecutor(ctx context.Context) Executor {
+	return executorFor(ctx, p.db)
+}
+
+func executorFor(ctx context.Context, db *sql.DB) Executor {
 	if tx, ok := postgres.GetTx(ctx); ok {
 		return tx
 	}
-	logger.Warnf("transaction disabled")
-	return p.db
+	return db
 }
 
 func (p *ReviewRepoPG) GetByID(ctx context.Context, ID int) (*entity.Review, error) {
@@ -104,8 +106,11 @@ func (p *ReviewRepoPG) Create(ctx context.Context, r entity.Review) (int, error)
 	return rw.ID, nil
 }
 
-func (p *ReviewRepoPG) Update(ctx context.Context, r entity.Review) (*entity.Review, error) {
-	const q = `UPDATE reviews SET score = $1, content = $2, updated_at = now() WHERE id = $3 AND is_deleted = FALSE RETURNING id, created_at, updated_at, user_id, movie_id, score, content;`
+func (p *ReviewRepoPG) Update(ctx context.Context, r entity.ReviewUpdate) (*entity.Review, error) {
+	const q = `UPDATE reviews
+		SET score = COALESCE($1, score), content = COALESCE($2, content), updated_at = now()
+		WHERE id = $3 AND is_deleted = FALSE
+		RETURNING id, created_at, updated_at, user_id, movie_id, score, content`
 	var rw row
 
 	exec := p.getExecutor(ctx)
@@ -145,10 +150,9 @@ func (p *ReviewRepoPG) GetReviewsByMovie(ctx context.Context, movieID int) ([]en
 	exec := p.getExecutor(ctx)
 	rows, err := exec.QueryContext(ctx, q, movieID)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, entity.ErrReviewNotFound
-		}
+		return nil, err
 	}
+	defer rows.Close()
 	for rows.Next() {
 		var rw row
 		err := rows.Scan(
@@ -165,5 +169,5 @@ func (p *ReviewRepoPG) GetReviewsByMovie(ctx context.Context, movieID int) ([]en
 		}
 		reviews = append(reviews, *rw.toEntity())
 	}
-	return reviews, nil
+	return reviews, rows.Err()
 }

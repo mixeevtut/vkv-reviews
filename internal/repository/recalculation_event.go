@@ -34,7 +34,7 @@ func (r *RecalcEventRepo) FetchUnsent(ctx context.Context, limit int) ([]entity.
 		}
 		res = append(res, e)
 	}
-	return res, nil
+	return res, rows.Err()
 }
 
 func (r *RecalcEventRepo) MarkSent(ctx context.Context, id int64) error {
@@ -50,7 +50,7 @@ func (r *RecalcEventRepo) MarkSent(ctx context.Context, id int64) error {
 func (r *RecalcEventRepo) Add(ctx context.Context, movieID int) error {
 	const q = `INSERT INTO recalculation_event(movie_id) VALUES ($1)`
 
-	_, err := r.db.ExecContext(ctx, q, movieID)
+	_, err := executorFor(ctx, r.db).ExecContext(ctx, q, movieID)
 	if err != nil {
 		return entity.ErrEventAdd
 	}

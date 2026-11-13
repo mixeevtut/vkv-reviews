@@ -122,7 +122,6 @@ func (r *Movies) CreateBatch(ctx context.Context, movies []*entity.Movie) error 
 		ON CONFLICT (id) DO UPDATE SET
 			title = EXCLUDED.title,
 			description = EXCLUDED.description,
-			average_score = EXCLUDED.average_score,
 			release_date = EXCLUDED.release_date,
 			updated_at = CURRENT_TIMESTAMP
 	`)
@@ -173,6 +172,6 @@ func (r *Movies) UpdateAvgRating(ctx context.Context, movieId int, avgRating flo
 		return errors.New("invalid movie ID")
 	}
 
-	_, err := r.db.ExecContext(ctx, q, avgRating, movieId)
+	_, err := executorFor(ctx, r.db).ExecContext(ctx, q, avgRating, movieId)
 	return err
 }

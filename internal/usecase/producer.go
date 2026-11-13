@@ -21,13 +21,9 @@ func NewProducer(repo repository.RecalcEventRepository, rc *pkgredis.Client) *Pr
 	}
 }
 
-func (p *Producer) Run(ctx context.Context, pollEvery time.Duration, batch int) error {
+func (p *Producer) Run(ctx context.Context, pollEvery time.Duration, batch int) {
 	t := time.NewTicker(pollEvery)
 	defer t.Stop()
-
-	if err := p.redis.EnsureGroup(ctx); err != nil {
-		return err
-	}
 
 	log.Printf("[producer] ready: stream=%s pollEvery=%s batch=%d", p.redis.Stream, pollEvery, batch)
 
@@ -35,7 +31,7 @@ func (p *Producer) Run(ctx context.Context, pollEvery time.Duration, batch int) 
 		select {
 		case <-ctx.Done():
 			log.Println("[producer] stopping: context canceled")
-			return ctx.Err()
+			return
 		case <-t.C:
 			evs, err := p.repo.FetchUnsent(ctx, batch)
 			if err != nil {

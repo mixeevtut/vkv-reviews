@@ -10,11 +10,11 @@ import (
 
 type VKVideoParser struct{}
 
-func (p *VKVideoParser) ParseMoviesFromPlaylists(playlists [][]interface{}) ([]*entity.Movie, error) {
+func (p *VKVideoParser) ParseMovies(items [][]interface{}) ([]*entity.Movie, error) {
 	var movies []*entity.Movie
 
-	for _, playlist := range playlists {
-		movie, err := p.parsePlaylistItem(playlist)
+	for _, item := range items {
+		movie, err := p.parseItem(item)
 		if err != nil {
 			continue
 		}
@@ -22,10 +22,23 @@ func (p *VKVideoParser) ParseMoviesFromPlaylists(playlists [][]interface{}) ([]*
 	}
 
 	if len(movies) == 0 {
-		return nil, fmt.Errorf("no valid movies found in playlists")
+		return nil, fmt.Errorf("no valid movies found in the catalog")
 	}
 
 	return movies, nil
+}
+
+func (p *VKVideoParser) parseItem(item []interface{}) (*entity.Movie, error) {
+	if len(item) > 20 {
+		if path, ok := item[20].(string); ok && strings.HasPrefix(path, "/video") {
+			id, err := p.extractVideoID(strings.TrimPrefix(path, "/video"))
+			title, hasTitle := item[3].(string)
+			if err == nil && id > 0 && hasTitle && title != "" {
+				return &entity.Movie{ID: id, Title: title}, nil
+			}
+		}
+	}
+	return p.parsePlaylistItem(item)
 }
 
 func (p *VKVideoParser) parsePlaylistItem(playlist []interface{}) (*entity.Movie, error) {

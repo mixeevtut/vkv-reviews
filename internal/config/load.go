@@ -12,10 +12,11 @@ func Load() (App, error) {
 	var cfg App
 
 	configPath := pflag.String("config", "config.yaml", "path to config file")
+	pflag.Parse()
 
 	viper.SetConfigFile(*configPath)
 	if err := viper.ReadInConfig(); err != nil {
-		panic(err)
+		return cfg, fmt.Errorf("read config: %w", err)
 	}
 
 	viper.SetEnvPrefix("APP")

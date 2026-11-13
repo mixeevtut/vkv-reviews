@@ -28,13 +28,13 @@ func NewMovieImportUseCase(client *fetcher.VKVideoClient, parser *repository.VKV
 }
 
 func (uc *MovieImport) ImportMovies(ctx context.Context, maxPages int) (*ImportResult, error) {
-	playlists, err := uc.client.FetchAllMoviesWithPagination(ctx, maxPages)
+	items, err := uc.client.FetchAllMoviesWithPagination(ctx, maxPages)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch movies from VK: %w", err)
 	}
-	movies, err := uc.parser.ParseMoviesFromPlaylists(playlists)
+	movies, err := uc.parser.ParseMovies(items)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse movies from playlists: %w", err)
+		return nil, fmt.Errorf("failed to parse movies from VK: %w", err)
 	}
 
 	if len(movies) == 0 {

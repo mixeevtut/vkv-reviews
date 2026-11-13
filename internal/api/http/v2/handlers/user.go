@@ -32,6 +32,7 @@ func (h *HTTPUserHandler) CreateUser(c *gin.Context) {
 		c.AbortWithStatusJSON(
 			http.StatusInternalServerError,
 			apigen.Error{Code: "internal_server_error", Message: "Failed to create user"})
+		return
 	}
 
 	response := dto.ToUserCreateResponse(id)
